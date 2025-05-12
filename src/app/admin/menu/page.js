@@ -9,7 +9,7 @@ const categories = [
   { label: "Coffee", value: "COFFEE" },
   { label: "non-Coffee", value: "NONCOFFEE" },
   { label: "Snack", value: "SNACK" },
-  { label: "Dessert", value: "DESSERT" },
+  { label: "Dessert", value: "DESERT" },
 ];
 
 export default function AdminMenuPage() {
@@ -72,20 +72,67 @@ export default function AdminMenuPage() {
       formData.append("category", form.category);
       formData.append("price", form.price);
       if (form.image) formData.append("image", form.image);
-      const res = await fetch("/api/menu", {
-        method: "POST",
-        body: formData,
-      });
-      if (res.ok) {
-        setShowForm(false);
-        fetchMenus();
+      if (form.id) {
+        // Edit menu (PATCH)
+        const res = await fetch(`/api/menu/${form.id}`, {
+          method: "PATCH",
+          body: formData,
+        });
+        if (res.ok) {
+          setShowForm(false);
+          fetchMenus();
+        } else {
+          const errMsg = await res.text();
+          alert("Gagal mengedit menu: " + errMsg);
+        }
       } else {
-        const errMsg = await res.text();
-        alert("Gagal menambah menu: " + errMsg);
+        // Tambah menu baru (POST)
+        const res = await fetch("/api/menu", {
+          method: "POST",
+          body: formData,
+        });
+        if (res.ok) {
+          setShowForm(false);
+          fetchMenus();
+        } else {
+          const errMsg = await res.text();
+          alert("Gagal menambah menu: " + errMsg);
+        }
       }
     } finally {
       setLoading(false);
     }
+  }
+
+  // Toggle isAvailable (see/unsee)
+  async function handleToggleSee(menu) {
+    await fetch(`/api/menu/${menu.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isAvailable: !menu.isAvailable }),
+    });
+    fetchMenus();
+  }
+
+  // Delete menu
+  async function handleDelete(menu) {
+    if (!confirm(`Hapus menu "${menu.name}"?`)) return;
+    await fetch(`/api/menu/${menu.id}`, { method: "DELETE" });
+    fetchMenus();
+  }
+
+  // Edit menu
+  function handleEdit(menu) {
+    setForm({
+      name: menu.name,
+      description: menu.description,
+      category: menu.category,
+      price: menu.price,
+      image: null,
+      imageUrl: menu.imageUrl || "",
+      id: menu.id,
+    });
+    setShowForm(true);
   }
 
   const filteredMenus = Array.isArray(menus)
@@ -143,9 +190,16 @@ export default function AdminMenuPage() {
                   <div className="text-gray-300 text-sm mb-2 min-h-[40px]">{item.description}</div>
                   <div className="font-bold text-lg mb-2">Rp{Number(item.price).toLocaleString("id-ID")}</div>
                   <div className="flex gap-4 mt-2 text-2xl">
-                    <button className="hover:text-blue-400"><span role="img" aria-label="lihat">👁️</span></button>
-                    <button className="hover:text-yellow-400"><span role="img" aria-label="edit">✏️</span></button>
-                    <button className="hover:text-red-400"><span role="img" aria-label="hapus">🗑️</span></button>
+                    <button
+                      className={item.isAvailable ? "hover:text-blue-400" : "text-gray-400 hover:text-blue-400"}
+                      title={item.isAvailable ? "Unsee (sembunyikan dari pelanggan)" : "See (tampilkan ke pelanggan)"}
+                      onClick={() => handleToggleSee(item)}
+                      type="button"
+                    >
+                      {item.isAvailable ? <span role="img" aria-label="see">👁️</span> : <span role="img" aria-label="unsee">👁️‍🗨️</span>}
+                    </button>
+                    <button className="hover:text-yellow-400" title="Edit" onClick={() => handleEdit(item)} type="button"><span role="img" aria-label="edit">✏️</span></button>
+                    <button className="hover:text-red-400" title="Delete" onClick={() => handleDelete(item)} type="button"><span role="img" aria-label="hapus">🗑️</span></button>
                   </div>
                 </div>
               </div>
@@ -184,7 +238,7 @@ export default function AdminMenuPage() {
                 <form onSubmit={handleSubmit} className="flex flex-col w-1/2 gap-4 justify-between">
                   <div>
                     <label className="block font-semibold mb-1">Nama Makanan</label>
-                    <input type="text" placeholder="Nama Makanan" className="border rounded px-3 py-2 w-full mb-3" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required />
+                    <input type="text" placeholder="Nama Makanan" className="border rounded px-3 py-2 w-full mb-3" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required readOnly={!!form.id} />
                     <label className="block font-semibold mb-1">Deskripsi</label>
                     <textarea placeholder="Deskripsi" className="border rounded px-3 py-2 w-full mb-3" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} required />
                     <label className="block font-semibold mb-1">Kategori</label>

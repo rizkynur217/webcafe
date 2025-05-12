@@ -3,7 +3,9 @@ import prisma from '@/lib/prisma';
 
 export async function GET(request) {
     try {
-        const menu = await prisma.menuItem.findMany();
+        const menu = await prisma.menuItem.findMany({
+            orderBy: { name: 'asc' }
+        });
         return NextResponse.json(menu);
     } catch (error) {
         console.error('Error fetching menu:', error);
@@ -54,7 +56,7 @@ export async function POST(request) {
         }
 
         // Ensure the category value is valid for the enum
-        const validCategories = ['MAINCOURSE', 'COFFEE', 'NONCOFFEE', 'SNACK', 'DESSERT'];
+        const validCategories = ['MAINCOURSE', 'COFFEE', 'NONCOFFEE', 'SNACK', 'DESERT'];
         if (!validCategories.includes(data.category)) {
             return NextResponse.json(
                 { error: 'Invalid category. Must be one of: MAINCOURSE, COFFEE, NONCOFFEE, SNACK, DESSERT' },

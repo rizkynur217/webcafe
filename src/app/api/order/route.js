@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import prisma from '../../../lib/prisma';
+import prisma from '@/lib/prisma';
 import { getSession } from '../../../lib/session';
 
 // POST /api/orders - Create a new order
@@ -20,22 +20,22 @@ export async function POST(request) {
       const userId = session.user.id;
       console.log('User ID:', userId);
       
-      const requestBody = await request.json();
-      console.log('Request body:', JSON.stringify(requestBody));
+      const data = await request.json();
+      console.log('Request body:', JSON.stringify(data));
       
-      const { items } = requestBody;
+      const { items, totalPrice, notes, paymentMethod } = data;
   
       // Validate request body
-      if (!items || !Array.isArray(items) || items.length === 0) {
+      if (!userId || !Array.isArray(items) || items.length === 0) {
         console.log('Missing or invalid items array');
         return NextResponse.json(
-          { error: 'Order must contain at least one item' },
+          { error: 'Data pesanan tidak lengkap' },
           { status: 400 }
         );
       }
   
       // Extract menu item IDs to fetch their prices
-      const menuItemIds = items.map(item => item.menuItemId);
+      const menuItemIds = items.map(item => item.id);
       console.log('Menu item IDs:', menuItemIds);
   
       // Fetch menu items to get their prices
@@ -62,17 +62,17 @@ export async function POST(request) {
       const orderItems = [];
   
       for (const item of items) {
-        const menuItem = menuItems.find(mi => mi.id === item.menuItemId);
+        const menuItem = menuItems.find(mi => mi.id === item.id);
         
         if (!menuItem) {
-          console.log(`Menu item with ID ${item.menuItemId} not found`);
+          console.log(`Menu item with ID ${item.id} not found`);
           return NextResponse.json(
-            { error: `Menu item with ID ${item.menuItemId} not found` },
+            { error: `Menu item with ID ${item.id} not found` },
             { status: 400 }
           );
         }
   
-        const quantity = item.quantity || 1;
+        const quantity = item.qty || 1;
         const subtotal = menuItem.price * quantity;
         
         total += subtotal;
@@ -84,25 +84,24 @@ export async function POST(request) {
         });
       }
       
-      console.log('Total calculated:', total);
-      console.log('Order items:', orderItems);
+      console.log('Order items to create:', orderItems);
+      console.log('Order total:', total);
   
       try {
         // Create the order in the database
-        console.log('Creating order with data:', {
-          userId,
-          totalPrice: total,
-          status: 'PENDING',
-          items: orderItems.length
-        });
-        
         const order = await prisma.order.create({
           data: {
-            userId,
-            totalPrice: total,
+            userId: Number(userId),
+            totalPrice: Number(total),
+            notes: notes || null,
+            paymentMethod: paymentMethod || null,
             status: 'PENDING',
             items: {
-              create: orderItems,
+              create: orderItems.map(item => ({
+                menuItemId: Number(item.menuItemId),
+                quantity: Number(item.quantity),
+                price: Number(item.price),
+              })),
             },
           },
           include: {
@@ -124,9 +123,9 @@ export async function POST(request) {
         console.log('Order created successfully, order ID:', order.id);
         return NextResponse.json(order, { status: 201 });
       } catch (dbError) {
-        console.error('Database error creating order:', dbError);
+        console.error('Database error creating order:', dbError, orderItems);
         return NextResponse.json(
-          { error: 'Database error: ' + dbError.message },
+          { error: 'Database error: ' + dbError.message, orderItems },
           { status: 500 }
         );
       }

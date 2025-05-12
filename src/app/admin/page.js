@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import prisma from "@/lib/prisma";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 const STATUS_ORDER = ["PENDING", "PROCESSING", "COMPLETED", "CANCELLED"];
 const STATUS_LABEL = {
@@ -143,14 +144,4 @@ export default async function AdminDashboard() {
       </main>
     </div>
   );
-}
-
-function redirect(path) {
-  if (typeof window !== "undefined") {
-    window.location.href = path;
-  } else {
-    // SSR Next.js
-    // eslint-disable-next-line no-undef
-    return globalThis.Response.redirect(path, 302);
-  }
 } 
