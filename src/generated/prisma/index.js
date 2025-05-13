@@ -178,7 +178,7 @@ const config = {
       "value": "prisma-client-js"
     },
     "output": {
-      "value": "D:\\Saas\\webcafe-main\\src\\generated\\prisma",
+      "value": "E:\\SMK\\project-saas\\src\\generated\\prisma",
       "fromEnvVar": null
     },
     "config": {
